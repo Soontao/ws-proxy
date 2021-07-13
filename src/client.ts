@@ -2,9 +2,12 @@
 // repo: https://github.com/TooTallNate/proxy
 // with customize logic
 import assert from "assert";
+import debug from "debug";
 import http, { IncomingMessage } from "http";
 import net from "net";
 import WebSocket from "ws";
+
+const log = debug("ws-client");
 
 /**
  * create a socks5 proxy with target ws proxy server
@@ -15,7 +18,7 @@ export class ProxyClient {
   constructor(serverAddr: string, localPort = 53324) {
     this._wsServerAddr = serverAddr;
     this._localSocksServer = http.createServer().listen(localPort);
-    this._localSocksServer.on("connect", this._onConnect);
+    this._localSocksServer.on("connect", this._onConnect.bind(this));
   }
 
   /**
@@ -47,10 +50,16 @@ export class ProxyClient {
     }
     res.once("finish", onfinish);
 
+    socket.on("error", (err) => {
+      log("response socket error: %s", err);
+    });
+
     // pause the socket during authentication so no data is lost
     const parts = req.url.split(":");
     const host = parts[0];
     const port = +parts[1];
+
+    const _log = (format: string, ...args: any[]) => log(`proxy to [%s] ${format}`, host, ...args);
 
     const ws = new WebSocket(this._wsServerAddr, {
       headers: {
@@ -70,14 +79,20 @@ export class ProxyClient {
       res.detachSocket(socket);
 
       // nullify the ServerResponse object, so that it can be cleaned
-      // up before this socket proxying is completed
+      // up before this socket proxy is completed
       res = null;
 
       const target = WebSocket.createWebSocketStream(ws);
-      target.on("close", ws.close);
-      target.on("error", ws.onerror);
-      target.on("end", ws.close);
 
+      target.on("close", () => {
+        _log("target closed");
+      });
+      target.on("error", (err) => {
+        _log("target error: %s", err);
+      });
+      target.on("end", () => {
+        _log("target end");
+      });
       socket.pipe(target);
       target.pipe(socket);
     });

@@ -2,6 +2,21 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "run test server",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--nolazy", "-r", "ts-node/register/transpile-only"],
+      "args": ["examples/simple.ts"],
+      "env": {
+        "DEBUG":"ws*"
+      },
+      "cwd": "${workspaceRoot}",
+      "internalConsoleOptions": "openOnSessionStart",
+      "outputCapture": "std",
+      "skipFiles": ["<node_internals>/**", "node_modules/**"]
+    },
+    {
       "type": "node",
       "name": "vscode-jest-tests",
       "request": "launch",

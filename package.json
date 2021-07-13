@@ -1,6 +1,7 @@
 {
   "name": "ws-proxy",
   "version": "0.0.1",
+  "description": "build http proxy under websocket",
   "main": "lib/index.js",
   "scripts": {
     "test": "jest --detectOpenHandles --passWithNoTests",

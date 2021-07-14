@@ -3,38 +3,11 @@
 // with customize logic
 import assert from "assert";
 import debug from "debug";
-import http, { IncomingMessage } from "http";
+import http, { IncomingMessage, RequestOptions, ServerResponse } from "http";
 import net from "net";
-import { ServerResponse } from "node:http";
-import { RequestOptions } from "node:https";
 import WebSocket from "ws";
 
 const log = debug("ws-client");
-
-export class ProxyAgent extends http.Agent {
-  private _wsServerAddr: string;
-
-  constructor(wsServerAddr: string) {
-    super();
-    this._wsServerAddr = wsServerAddr;
-  }
-  createConnection(opts: RequestOptions, cb: Function) {
-    const ws = new WebSocket(this._wsServerAddr, {
-      headers: {
-        "x-proxy-host": opts.host,
-        "x-proxy-port": opts.port || 80
-      }
-    });
-    const stream = WebSocket.createWebSocketStream(ws);
-
-    ws.on("open", () => {
-      cb(null, stream);
-    });
-    ws.on("error", (err) => {
-      cb(err);
-    });
-  }
-}
 
 /**
  * create a socks5 proxy with target ws proxy server
@@ -43,15 +16,49 @@ export class ProxyClient {
   private _wsServerAddr: string;
   private _localProxyServer: http.Server;
   private _localProxyPort: string | number;
+  private _wsHeaders: { [key: string]: string };
 
-  constructor(serverAddr: string, localPort: string | number = 0) {
+  /**
+   *
+   * @param serverAddr server addr, like 'ws://server.host.com:80'
+   * @param localPort local http proxy port
+   * @param wsHeaders additional headers on ws request
+   */
+  constructor(serverAddr: string, localPort: string | number = 0, wsHeaders: { [key: string]: string } = {}) {
     this._wsServerAddr = serverAddr;
     this._localProxyServer = http.createServer();
     this._localProxyPort = localPort;
+    this._wsHeaders = wsHeaders;
   }
 
-  public createAgent() {
-    return new ProxyAgent(this._wsServerAddr);
+  private createWebSocket(host: string, port: string | number) {
+    return new WebSocket(this._wsServerAddr, {
+      headers: {
+        "x-proxy-host": host,
+        "x-proxy-port": port || 80,
+        ...this._wsHeaders
+      }
+    });
+  }
+
+  public createAgent(): http.Agent {
+    return new (class ProxyAgent extends http.Agent {
+      private _client: ProxyClient;
+      constructor(client: ProxyClient) {
+        super();
+        this._client = client;
+      }
+      createConnection(opts: RequestOptions, cb: Function) {
+        const ws = this._client.createWebSocket(opts.host, opts.port || 80);
+        const stream = WebSocket.createWebSocketStream(ws);
+        ws.on("open", () => {
+          cb(null, stream);
+        });
+        ws.on("error", (err) => {
+          cb(err);
+        });
+      }
+    })(this);
   }
 
   public async ready(): Promise<number> {
@@ -61,9 +68,7 @@ export class ProxyClient {
         log("proxy ready on port: %s", port);
         resolve(port);
       });
-      this._localProxyServer.once("error", (err) => {
-        reject(err);
-      });
+      this._localProxyServer.once("error", reject);
       this._localProxyServer.on("request", this._onRequest.bind(this));
       this._localProxyServer.on("connect", this._onConnect.bind(this));
     });
@@ -85,6 +90,8 @@ export class ProxyClient {
     });
 
     request.pipe(proxyRequest);
+
+    // TODO error handling
 
     request.on("end", () => {
       proxyRequest.end();
@@ -114,7 +121,7 @@ export class ProxyClient {
   /**
    * HTTP CONNECT proxy requests.
    */
-  private _onConnect(req: IncomingMessage, proxyClientSocket: net.Socket, head) {
+  private _onConnect(req: IncomingMessage, proxyClientSocket: net.Socket, head: any) {
     assert(!head || 0 == head.length, '"head" should be empty for proxy requests');
 
     let res = new http.ServerResponse(req);
@@ -142,12 +149,7 @@ export class ProxyClient {
 
     const _log = (format: string, ...args: any[]) => log(`proxy to [%s] ${format}`, host, ...args);
 
-    const ws = new WebSocket(this._wsServerAddr, {
-      headers: {
-        "x-proxy-host": host,
-        "x-proxy-port": port
-      }
-    });
+    const ws = this.createWebSocket(host, port);
 
     ws.on("open", () => {
       gotResponse = true;

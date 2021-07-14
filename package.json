@@ -48,8 +48,6 @@
   "dependencies": {
     "@newdash/newdash": "^5.19.0",
     "debug": "^4.3.2",
-    "simple-socks": "^2.2.1",
-    "socks": "^2.6.1",
     "ws": "^7.5.3"
   },
   "license": "MIT"

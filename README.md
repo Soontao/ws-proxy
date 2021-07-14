@@ -1,1 +1,3 @@
-# proxy under websocket
+# ws-proxy
+
+> provide http proxy under web socket

@@ -5,39 +5,115 @@ import assert from "assert";
 import debug from "debug";
 import http, { IncomingMessage } from "http";
 import net from "net";
+import { ServerResponse } from "node:http";
+import { RequestOptions } from "node:https";
 import WebSocket from "ws";
 
 const log = debug("ws-client");
+
+export class ProxyAgent extends http.Agent {
+  private _wsServerAddr: string;
+
+  constructor(wsServerAddr: string) {
+    super();
+    this._wsServerAddr = wsServerAddr;
+  }
+  createConnection(opts: RequestOptions, cb: Function) {
+    const ws = new WebSocket(this._wsServerAddr, {
+      headers: {
+        "x-proxy-host": opts.host,
+        "x-proxy-port": opts.port || 80
+      }
+    });
+    const stream = WebSocket.createWebSocketStream(ws);
+
+    ws.on("open", () => {
+      cb(null, stream);
+    });
+    ws.on("error", (err) => {
+      cb(err);
+    });
+  }
+}
 
 /**
  * create a socks5 proxy with target ws proxy server
  */
 export class ProxyClient {
   private _wsServerAddr: string;
-  private _localSocksServer: http.Server;
-  constructor(serverAddr: string, localPort = 53324) {
+  private _localProxyServer: http.Server;
+  private _localProxyPort: string | number;
+
+  constructor(serverAddr: string, localPort: string | number = 53324) {
     this._wsServerAddr = serverAddr;
-    this._localSocksServer = http.createServer().listen(localPort);
-    this._localSocksServer.on("connect", this._onConnect.bind(this));
+    this._localProxyServer = http.createServer();
+    this._localProxyPort = localPort;
+  }
+
+  public async ready(): Promise<number> {
+    return new Promise((resolve, reject) => {
+      this._localProxyServer.listen(parseInt(this._localProxyPort as any, 10), () => {
+        const port = this._localProxyServer.address()?.["port"];
+        log("proxy ready on port: %s", port);
+        resolve(port);
+      });
+      this._localProxyServer.once("error", (err) => {
+        reject(err);
+      });
+      this._localProxyServer.on("request", this._onRequest.bind(this));
+      this._localProxyServer.on("connect", this._onConnect.bind(this));
+    });
+  }
+
+  private _onRequest(request: IncomingMessage, response: ServerResponse) {
+    log("proxy accept request: %s", request.url);
+
+    const uri = new URL(request.url);
+
+    // TODO
+    const proxyRequest = http.request(
+      {
+        port: uri.port || 80,
+        hostname: uri.hostname, // only hostname ip, no port
+        method: request.method,
+        path: uri.pathname,
+        headers: request.headers,
+        agent: new ProxyAgent(this._wsServerAddr)
+      },
+      (result) => {
+        result.pipe(response);
+      }
+    );
+    proxyRequest.on("error", (err) => {
+      log("proxy request error %s", err);
+    });
+  }
+
+  public async stop(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this._localProxyServer.close((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
   }
 
   /**
    * HTTP CONNECT proxy requests.
    */
-  private _onConnect(req: IncomingMessage, socket: net.Socket, head) {
+  private _onConnect(req: IncomingMessage, proxyClientSocket: net.Socket, head) {
     assert(!head || 0 == head.length, '"head" should be empty for proxy requests');
 
-    let res;
-    let gotResponse = false;
-
-    // create the `res` instance for this request since Node.js
-    // doesn't provide us with one :(
-    // XXX: this is undocumented API, so it will break some day (ノಠ益ಠ)ノ彡┻━┻
-    res = new http.ServerResponse(req);
+    let res = new http.ServerResponse(req);
     res.shouldKeepAlive = false;
     res.chunkedEncoding = false;
     res.useChunkedEncodingByDefault = false;
-    res.assignSocket(socket);
+    res.assignSocket(proxyClientSocket);
+
+    let gotResponse = false;
 
     // called for the ServerResponse's "finish" event
     // XXX: normally, node's "http" module has a "finish" event listener that would
@@ -45,12 +121,12 @@ export class ProxyClient {
     // since we're making this ServerResponse instance manually, that event handler
     // never gets hooked up, so we must manually close the socket...
     function onfinish() {
-      res.detachSocket(socket);
-      socket.end();
+      res.detachSocket(proxyClientSocket);
+      proxyClientSocket.end();
     }
     res.once("finish", onfinish);
 
-    socket.on("error", (err) => {
+    proxyClientSocket.on("error", (err) => {
       log("response socket error: %s", err);
     });
 
@@ -76,34 +152,36 @@ export class ProxyClient {
       res.flushHeaders();
 
       // relinquish control of the `socket` from the ServerResponse instance
-      res.detachSocket(socket);
+      res.detachSocket(proxyClientSocket);
 
       // nullify the ServerResponse object, so that it can be cleaned
       // up before this socket proxy is completed
       res = null;
 
-      const target = WebSocket.createWebSocketStream(ws);
+      const targetProxy = WebSocket.createWebSocketStream(ws);
 
-      target.on("close", () => {
+      targetProxy.on("close", () => {
         _log("target closed");
       });
-      target.on("error", (err) => {
+      targetProxy.on("error", (err) => {
         _log("target error: %s", err);
       });
-      target.on("end", () => {
+      targetProxy.on("end", () => {
         _log("target end");
       });
-      socket.pipe(target);
-      target.pipe(socket);
+      proxyClientSocket.pipe(targetProxy);
+      targetProxy.pipe(proxyClientSocket);
     });
 
     ws.on("close", () => {
-      socket.destroy();
+      _log("websocket closed");
+      proxyClientSocket.destroy();
     });
 
     ws.on("error", (err) => {
+      _log("websocket err: %s", err);
       if (gotResponse) {
-        socket.destroy();
+        proxyClientSocket.destroy();
       } else if ("ENOTFOUND" == err?.["code"]) {
         res.writeHead(404);
         res.end();

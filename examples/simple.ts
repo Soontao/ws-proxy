@@ -2,12 +2,12 @@ import http from "http";
 import { ProxyClient } from "../src/client";
 import { ProxyServer } from "../src/server";
 
-const s = http.createServer(function (req, res) {
-  res.write("Hello World!"); //write a response to the client
-  res.end(); //end the response
-});
+const SERVER_PORT = 10032;
+const CLIENT_PORT = 50001;
+const server = http.createServer();
+new ProxyServer({ server });
 
-const server = new ProxyServer({ server: s });
-s.listen(10032).on("listening", () => {
-  const client = new ProxyClient("ws://127.0.0.1:10032/");
+server.listen(SERVER_PORT, async () => {
+  const client = new ProxyClient("ws://127.0.0.1:10032/", CLIENT_PORT);
+  await client.ready();
 });

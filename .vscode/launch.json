@@ -6,15 +6,22 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["--nolazy", "-r", "ts-node/register/transpile-only"],
-      "args": ["examples/simple.ts"],
+      "runtimeArgs": [
+        "--nolazy",
+        "-r",
+        "ts-node/register/transpile-only"
+      ],
+      "args": [
+        "examples/simple.ts"
+      ],
       "env": {
-        "DEBUG":"ws*"
+        "DEBUG": "ws*",
+        "NODE_DEBUG": "http"
       },
       "cwd": "${workspaceRoot}",
       "internalConsoleOptions": "openOnSessionStart",
       "outputCapture": "std",
-      "skipFiles": ["<node_internals>/**", "node_modules/**"]
+      "skipFiles": []
     },
     {
       "type": "node",

@@ -12,13 +12,32 @@ export class ProxyServer {
   private ws: WebSocket.Server;
   constructor(options: WebSocket.ServerOptions) {
     this.ws = new WebSocket.Server(options);
-    this.ws.on("headers", (ws, req) => {});
-    this.ws.on("listening", (wss) => {});
+    this.ws.on("listening", () => {
+      const port = this.ws.address()?.["port"];
+      log("proxy ready on port: %s", port);
+    });
     this.ws.on("connection", this._onConnect.bind(this));
     this.ws.on("error", (err) => {
       log("ws server start up error: %s", err);
     });
   }
+
+  /**
+   * stop the server
+   * @returns
+   */
+  public async stop(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.ws.close((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
   private _onConnect(ws: WebSocket, req: IncomingMessage) {
     const proxyHost = req.headers?.["x-proxy-host"] as string;
     const proxyPort = req.headers?.["x-proxy-port"] as string;
@@ -34,6 +53,7 @@ export class ProxyServer {
     });
     source.on("end", () => {
       _log("source end");
+      target.destroy();
     });
     target.on("error", (err) => {
       _log("target error: %s", err);
@@ -41,6 +61,7 @@ export class ProxyServer {
     });
     target.on("end", () => {
       _log("target end");
+      source.destroy();
     });
     target.on("close", () => {
       _log("target closed");

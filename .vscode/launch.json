@@ -15,8 +15,7 @@
         "examples/simple.ts"
       ],
       "env": {
-        "DEBUG": "ws*",
-        "NODE_DEBUG": "http"
+        "DEBUG": "ws*"
       },
       "cwd": "${workspaceRoot}",
       "internalConsoleOptions": "openOnSessionStart",

@@ -41,7 +41,9 @@ export class ProxyServer {
   private _onConnect(ws: WebSocket, req: IncomingMessage) {
     const proxyHost = req.headers?.["x-proxy-host"] as string;
     const proxyPort = req.headers?.["x-proxy-port"] as string;
+
     const _log = (format: string, ...args: any[]) => log(`proxy to [%s] ${format}`, proxyHost, ...args);
+
     const source = WebSocket.createWebSocketStream(ws);
     const target = connect({ host: proxyHost, port: parseInt(proxyPort, 10) });
     source.on("error", (err) => {

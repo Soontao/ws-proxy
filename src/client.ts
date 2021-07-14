@@ -70,22 +70,28 @@ export class ProxyClient {
 
     const uri = new URL(request.url);
 
-    // TODO
-    const proxyRequest = http.request(
-      {
-        port: uri.port || 80,
-        hostname: uri.hostname, // only hostname ip, no port
-        method: request.method,
-        path: uri.pathname,
-        headers: request.headers,
-        agent: new ProxyAgent(this._wsServerAddr)
-      },
-      (result) => {
-        result.pipe(response);
-      }
-    );
-    proxyRequest.on("error", (err) => {
-      log("proxy request error %s", err);
+    const proxyRequest = http.request({
+      port: uri.port || 80,
+      hostname: uri.hostname,
+      method: request.method,
+      path: uri.pathname,
+      headers: request.headers,
+      protocol: uri.protocol,
+      agent: new ProxyAgent(this._wsServerAddr)
+    });
+
+    request.pipe(proxyRequest);
+
+    request.on("end", () => {
+      proxyRequest.end();
+    });
+
+    proxyRequest.on("response", (proxyResponse) => {
+      response.writeHead(proxyResponse.statusCode, proxyResponse.httpVersion, proxyResponse.headers);
+      proxyResponse.pipe(response);
+      proxyResponse.on("end", () => {
+        response.end();
+      });
     });
   }
 
@@ -115,11 +121,6 @@ export class ProxyClient {
 
     let gotResponse = false;
 
-    // called for the ServerResponse's "finish" event
-    // XXX: normally, node's "http" module has a "finish" event listener that would
-    // take care of closing the socket once the HTTP response has completed, but
-    // since we're making this ServerResponse instance manually, that event handler
-    // never gets hooked up, so we must manually close the socket...
     function onfinish() {
       res.detachSocket(proxyClientSocket);
       proxyClientSocket.end();

@@ -6,6 +6,10 @@
 
 > provide http proxy under web socket
 
+## High Level Design
+
+![](https://res.cloudinary.com/digf90pwi/image/upload/v1626255042/ws-proxy_1_ezuxfy.png)
+
 ## Example
 
 > an example proxy server with client

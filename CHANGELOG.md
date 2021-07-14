@@ -1,0 +1,10 @@
+# Changelog
+
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+### 0.0.2 (2021-07-14)
+
+
+### Features
+
+* update ([ff7d646](https://github.com/Soontao/ws-proxy/commit/ff7d646b29c0d73a3aad3c3af44cb810afffc3a4))

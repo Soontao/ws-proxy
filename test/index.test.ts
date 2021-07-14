@@ -29,6 +29,13 @@ describe("Demo Test Suite", () => {
       });
 
       expect(resp.status).toBe(200);
+
+      const resp2 = await axios.get("http://registry.npmjs.org/", {
+        httpAgent: agent,
+        httpsAgent: agent
+      });
+
+      expect(resp2.status).toBe(200);
     } finally {
       if (proxyServer) {
         await proxyServer.stop();

@@ -44,10 +44,14 @@ export class ProxyClient {
   private _localProxyServer: http.Server;
   private _localProxyPort: string | number;
 
-  constructor(serverAddr: string, localPort: string | number = 53324) {
+  constructor(serverAddr: string, localPort: string | number = 0) {
     this._wsServerAddr = serverAddr;
     this._localProxyServer = http.createServer();
     this._localProxyPort = localPort;
+  }
+
+  public createAgent() {
+    return new ProxyAgent(this._wsServerAddr);
   }
 
   public async ready(): Promise<number> {
@@ -77,7 +81,7 @@ export class ProxyClient {
       path: uri.pathname,
       headers: request.headers,
       protocol: uri.protocol,
-      agent: new ProxyAgent(this._wsServerAddr)
+      agent: this.createAgent()
     });
 
     request.pipe(proxyRequest);

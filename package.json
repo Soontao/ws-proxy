@@ -1,5 +1,5 @@
 {
-  "name": "ws-proxy",
+  "name": "@newdash/ws-proxy",
   "version": "0.0.2",
   "description": "build http proxy under websocket",
   "main": "lib/index.js",

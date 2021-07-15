@@ -41,6 +41,11 @@ export class ProxyClient {
     });
   }
 
+  /**
+   * create a http agent for nodejs http client
+   *
+   * @returns
+   */
   public createAgent(): http.Agent {
     return new (class ProxyAgent extends http.Agent {
       private _client: ProxyClient;
@@ -75,9 +80,9 @@ export class ProxyClient {
   }
 
   private _onRequest(request: IncomingMessage, response: ServerResponse) {
-    log("proxy accept request: %s", request.url);
-
     const uri = new URL(request.url);
+    const _log = (format: string, ...args: any[]) => log(`proxy request to [%s] ${format}`, uri.host, ...args);
+    _log("accept proxy request");
 
     const proxyRequest = http.request({
       port: uri.port || 80,
@@ -91,18 +96,24 @@ export class ProxyClient {
 
     request.pipe(proxyRequest);
 
-    // TODO error handling
-
     request.on("end", () => {
+      _log("inbound request");
       proxyRequest.end();
     });
 
     proxyRequest.on("response", (proxyResponse) => {
       response.writeHead(proxyResponse.statusCode, proxyResponse.httpVersion, proxyResponse.headers);
       proxyResponse.pipe(response);
+      proxyResponse.on("error", (err) => {
+        response.destroy(err);
+      });
       proxyResponse.on("end", () => {
         response.end();
       });
+    });
+
+    proxyRequest.on("error", (err) => {
+      request.destroy(err);
     });
   }
 

@@ -24,25 +24,25 @@
   "devDependencies": {
     "@commitlint/config-conventional": "^12.1.4",
     "@types/debug": "^4.1.7",
-    "@types/jest": "^26.0.24",
-    "@types/node": "^14.14.41",
+    "@types/jest": "~27",
+    "@types/node": "^14.17.21",
     "@types/ws": "^7.4.7",
-    "@typescript-eslint/eslint-plugin": "^4.28.5",
-    "@typescript-eslint/parser": "^4.28.5",
-    "axios": "^0.21.1",
+    "@typescript-eslint/eslint-plugin": "^4.33.0",
+    "@typescript-eslint/parser": "^4.33.0",
+    "axios": "^0.21.4",
     "commitlint": "^12.1.4",
-    "eslint": "^7.31.0",
+    "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-prettier": "^3.4.0",
+    "eslint-plugin-prettier": "^3.4.1",
     "husky": "~4.3.8",
-    "jest": "^27.0.6",
-    "prettier": "^2.3.2",
+    "jest": "~27.0.0",
+    "prettier": "^2.4.1",
     "proxy-agent": "^4.0.1",
     "rimraf": "^3.0.2",
     "standard-version": "^9.3.1",
-    "ts-jest": "^27.0.4",
-    "ts-node": "^10.1.0",
-    "typescript": "^4.3.5"
+    "ts-jest": "~27.0.5",
+    "ts-node": "^10.2.1",
+    "typescript": "^4.4.3"
   },
   "husky": {
     "hooks": {
@@ -50,9 +50,9 @@
     }
   },
   "dependencies": {
-    "@newdash/newdash": "^5.19.0",
+    "@newdash/newdash": "^5.20.0",
     "debug": "^4.3.2",
-    "ws": "^7.5.3"
+    "ws": "^7.5.5"
   },
   "license": "MIT"
 }

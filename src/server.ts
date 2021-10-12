@@ -1,7 +1,7 @@
 import debug from "debug";
 import type { IncomingMessage } from "http";
+import { IncomingHttpHeaders } from "http";
 import { connect } from "net";
-import { IncomingHttpHeaders } from "node:http";
 import * as WebSocket from "ws";
 
 const log = debug("ws-server");

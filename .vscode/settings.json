@@ -4,13 +4,11 @@
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
     "source.fixAll": true,
-    "source.organizeImports": true
   },
   "[typescript]": {
-    "editor.defaultFormatter": "rvest.vs-code-prettier-eslint"
+    "editor.defaultFormatter": "vscode.typescript-language-features"
   },
   "cSpell.words": [
     "ENOTFOUND"
-  ],
-  "WhiteSource Advise.BaseBranch": "main"
+  ]
 }
